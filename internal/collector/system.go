@@ -5,7 +5,16 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/shirou/gopsutil/v3/process"
 )
+
+type Process struct {
+	PID        int32
+	Name       string
+	CPUPercent float64
+	MemMB      float32
+	Status     string
+}
 
 type SystemSnapshot struct {
 	CPUPercent  float64
@@ -18,6 +27,7 @@ type SystemSnapshot struct {
 	Hostname    string
 	OS          string
 	Uptime      uint64
+	Processes   []Process
 }
 
 func GetSnapshot() (*SystemSnapshot, error) {
@@ -41,6 +51,26 @@ func GetSnapshot() (*SystemSnapshot, error) {
 		return nil, err
 	}
 
+	procs, _ := process.Processes()
+	var processes []Process
+	for _, p := range procs {
+		name, _ := p.Name()
+		cpu, _ := p.CPUPercent()
+		mem, _ := p.MemoryInfo()
+		status, _ := p.Status()
+		var memMB float32
+		if mem != nil {
+			memMB = float32(mem.RSS) / 1024 / 1024
+		}
+		processes = append(processes, Process{
+			PID:        p.Pid,
+			Name:       name,
+			CPUPercent: cpu,
+			MemMB:      memMB,
+			Status:     status[0],
+		})
+	}
+
 	return &SystemSnapshot{
 		CPUPercent:  cpuPercent[0],
 		MemTotal:    memStat.Total,
@@ -52,5 +82,6 @@ func GetSnapshot() (*SystemSnapshot, error) {
 		Hostname:    hostStat.Hostname,
 		OS:          hostStat.OS,
 		Uptime:      hostStat.Uptime,
+		Processes:   processes,
 	}, nil
 }
