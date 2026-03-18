@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/Luke-Francks/sysix/internal/collector"
 )
 
 func main() {
@@ -15,7 +17,16 @@ func main() {
 
 	switch args[0] {
 	case "status":
-		fmt.Println("sysix status - not yet implemented")
+		snapshot, err := collector.GetSnapshot()
+		if err != nil {
+			fmt.Println("error collecting system data:", err)
+			return
+		}
+		fmt.Printf("\n[*] Host:   %s (%s)\n", snapshot.Hostname, snapshot.OS)
+		fmt.Printf("[~] Uptime: %d hours\n", snapshot.Uptime/3600)
+		fmt.Printf("[>] CPU:    %.1f%%\n", snapshot.CPUPercent)
+		fmt.Printf("[>] Memory: %.1f%% (%d MB / %d MB)\n", snapshot.MemPercent, snapshot.MemUsed/1024/1024, snapshot.MemTotal/1024/1024)
+		fmt.Printf("[>] Disk:   %.1f%% (%d GB / %d GB)\n", snapshot.DiskPercent, snapshot.DiskUsed/1024/1024/1024, snapshot.DiskTotal/1024/1024/1024)
 	case "watch":
 		fmt.Println("sysix watch (TUI) - not yet implemented")
 	case "serve":
