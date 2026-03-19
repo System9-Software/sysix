@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/System9-Software/sysix/internal/collector"
 	tea "github.com/charmbracelet/bubbletea"
@@ -41,9 +42,17 @@ var (
 			Padding(1, 2)
 )
 
+type tickMsg time.Time
+
 type model struct {
 	snapshot *collector.SystemSnapshot
 	err      error
+}
+
+func tick() tea.Cmd {
+	return tea.Tick(2*time.Second, func(t time.Time) tea.Msg {
+		return tickMsg(t)
+	})
 }
 
 func initialModel() model {
@@ -52,7 +61,7 @@ func initialModel() model {
 }
 
 func (m model) Init() tea.Cmd {
-	return nil
+	return tick()
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -62,6 +71,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 		}
+	case tickMsg:
+		snapshot, err := collector.GetSnapshot()
+		m.snapshot = snapshot
+		m.err = err
+		return m, tick()
 	}
 	return m, nil
 }
@@ -73,7 +87,7 @@ func (m model) View() string {
 
 	s := m.snapshot
 
-	content := titleStyle.Render("observer") + "\n"
+	content := titleStyle.Render("System9 observer") + "\n"
 	content += labelStyle.Render("Host:   ") + valueStyle.Render(fmt.Sprintf("%s (%s)", s.Hostname, s.OS)) + "\n"
 	content += labelStyle.Render("Uptime: ") + valueStyle.Render(fmt.Sprintf("%d hours", s.Uptime/3600)) + "\n"
 	content += labelStyle.Render("CPU:    ") + valueStyle.Render(fmt.Sprintf("%.1f%%", s.CPUPercent)) + "\n"
