@@ -17,6 +17,7 @@ func main() {
 
 	switch args[0] {
 	case "status":
+		showProcs := len(args) > 1 && args[1] == "--procs"
 		snapshot, err := collector.GetSnapshot()
 		if err != nil {
 			fmt.Println("error collecting system data:", err)
@@ -27,6 +28,17 @@ func main() {
 		fmt.Printf("[>] CPU:    %.1f%%\n", snapshot.CPUPercent)
 		fmt.Printf("[>] Memory: %.1f%% (%d MB / %d MB)\n", snapshot.MemPercent, snapshot.MemUsed/1024/1024, snapshot.MemTotal/1024/1024)
 		fmt.Printf("[>] Disk:   %.1f%% (%d GB / %d GB)\n", snapshot.DiskPercent, snapshot.DiskUsed/1024/1024/1024, snapshot.DiskTotal/1024/1024/1024)
+
+		if showProcs {
+			fmt.Println("\n--- Processes ---")
+			fmt.Printf("%-6s %-30s %8s %10s %s\n", "PID", "Name", "CPU%", "Mem(MB)", "Status")
+			fmt.Println("----------------------------------------------------------------------")
+			for _, p := range snapshot.Processes {
+				if p.MemMB > 1 {
+					fmt.Printf("%-6d %-30s %8.1f %10.1f %s\n", p.PID, p.Name, p.CPUPercent, p.MemMB, p.Status)
+				}
+			}
+		}
 	case "watch":
 		fmt.Println("sysix watch (TUI) - not yet implemented")
 	case "serve":
@@ -44,9 +56,10 @@ func printHelp() {
 welcome to sysix observer 0.3
 
 Usage:
-  sysix status     snapshot of your system right now
-  sysix watch      launch the live TUI
-  sysix serve      launch the web UI
-  sysix help       show this help message
+  sysix status            snapshot of your system right now
+  sysix status --procs    include running processes
+  sysix watch             launch the live TUI
+  sysix serve             launch the web UI
+  sysix help              show this help message
 	`)
 }
