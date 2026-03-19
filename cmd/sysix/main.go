@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Luke-Francks/sysix/internal/collector"
+	"github.com/Luke-Francks/sysix/internal/tui"
 )
 
 func main() {
@@ -65,7 +66,9 @@ func main() {
 		}
 
 	case "watch":
-		fmt.Println("sysix watch (TUI) - not yet implemented")
+		if err := tui.Start(); err != nil {
+			fmt.Println("error starting TUI:", err)
+		}
 	case "serve":
 		fmt.Println("sysix serve (web UI) - not yet implemented")
 	case "help":
