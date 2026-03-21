@@ -6,6 +6,7 @@ import (
 
 	"github.com/System9-Software/sysix/internal/collector"
 	"github.com/System9-Software/sysix/internal/tui"
+	"github.com/System9-Software/sysix/internal/web"
 )
 
 func main() {
@@ -70,7 +71,10 @@ func main() {
 			fmt.Println("error starting TUI:", err)
 		}
 	case "serve":
-		fmt.Println("sysix serve (web UI) - not yet implemented")
+		port := 8080
+		if err := web.Start(port); err != nil {
+			fmt.Println("error starting web server:", err)
+		}
 	case "help":
 		printHelp()
 	default:
