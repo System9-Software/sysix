@@ -5,3 +5,8 @@ panels:
   processes: true
   ports: true
   network: true
+
+web:
+  port: 8080
+  host: localhost
+  enabled: true

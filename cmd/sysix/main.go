@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/System9-Software/sysix/internal/collector"
+	"github.com/System9-Software/sysix/internal/config"
 	"github.com/System9-Software/sysix/internal/tui"
 	"github.com/System9-Software/sysix/internal/web"
 )
@@ -71,8 +72,12 @@ func main() {
 			fmt.Println("error starting TUI:", err)
 		}
 	case "serve":
-		port := 8080
-		if err := web.Start(port); err != nil {
+		cfg, _ := config.Load()
+		if !cfg.Web.Enabled {
+			fmt.Println("web UI is disabled in config.yaml")
+			return
+		}
+		if err := web.Start(cfg.Web.Port); err != nil {
 			fmt.Println("error starting web server:", err)
 		}
 	case "help":

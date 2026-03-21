@@ -13,9 +13,16 @@ type PanelConfig struct {
 	Network   bool `yaml:"network"`
 }
 
+type WebConfig struct {
+	Port    int    `yaml:"port"`
+	Host    string `yaml:"host"`
+	Enabled bool   `yaml:"enabled"`
+}
+
 type Config struct {
 	RefreshRate int         `yaml:"refresh_rate"`
 	Panels      PanelConfig `yaml:"panels"`
+	Web         WebConfig   `yaml:"web"`
 }
 
 func Default() *Config {
@@ -26,6 +33,11 @@ func Default() *Config {
 			Processes: true,
 			Ports:     true,
 			Network:   true,
+		},
+		Web: WebConfig{
+			Port:    8080,
+			Host:    "localhost",
+			Enabled: true,
 		},
 	}
 }
