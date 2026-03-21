@@ -4,15 +4,51 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/System9-Software/sysix/internal/collector"
 )
 
+type HistoryPoint struct {
+	Time        int64   `json:"time"`
+	CPUPercent  float64 `json:"cpu"`
+	MemPercent  float64 `json:"mem"`
+	DiskPercent float64 `json:"disk"`
+}
+
+var (
+	history []HistoryPoint
+	histMu  sync.Mutex
+)
+
+func recordHistory() {
+	for {
+		snap, err := collector.GetSnapshot()
+		if err == nil {
+			histMu.Lock()
+			history = append(history, HistoryPoint{
+				Time:        time.Now().Unix(),
+				CPUPercent:  snap.CPUPercent,
+				MemPercent:  snap.MemPercent,
+				DiskPercent: snap.DiskPercent,
+			})
+			if len(history) > 60 {
+				history = history[len(history)-60:]
+			}
+			histMu.Unlock()
+		}
+		time.Sleep(2 * time.Second)
+	}
+}
+
 func Start(port int) error {
+	go recordHistory()
 	http.HandleFunc("/", handleIndex)
 	http.HandleFunc("/api/snapshot", handleSnapshot)
 	http.HandleFunc("/api/ports", handlePorts)
 	http.HandleFunc("/api/network", handleNetwork)
+	http.HandleFunc("/api/history", handleHistory)
 
 	addr := fmt.Sprintf(":%d", port)
 	fmt.Printf("sysix web UI running at http://localhost%s\n", addr)
@@ -22,6 +58,13 @@ func Start(port int) error {
 func handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(dashboard))
+}
+
+func handleHistory(w http.ResponseWriter, r *http.Request) {
+	histMu.Lock()
+	defer histMu.Unlock()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(history)
 }
 
 func handleSnapshot(w http.ResponseWriter, r *http.Request) {
@@ -384,6 +427,9 @@ const dashboard = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('network', this)">
       <span class="nav-icon">[-]</span> Network
     </button>
+    <button class="nav-item" onclick="showPage('system', this)">
+      <span class="nav-icon">[#]</span> System
+    </button>
     <button class="nav-item" onclick="showPage('settings', this)">
       <span class="nav-icon">[+]</span> Settings
     </button>
@@ -459,6 +505,40 @@ const dashboard = `<!DOCTYPE html>
       <div class="stat-row"><span class="stat-label">Total Received</span><span class="stat-value" id="net-recv">—</span></div>
       <div class="stat-row"><span class="stat-label">Packets Out</span><span class="stat-value" id="net-pkts-out">—</span></div>
       <div class="stat-row"><span class="stat-label">Packets In</span><span class="stat-value" id="net-pkts-in">—</span></div>
+    </div>
+  </div>
+
+<!-- SYSTEM -->
+  <div class="page" id="page-system">
+    <div class="page-header">System</div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">CPU Usage</div>
+      <canvas id="cpu-graph" height="80" style="width:100%;display:block;"></canvas>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Memory Usage</div>
+      <canvas id="mem-graph" height="80" style="width:100%;display:block;"></canvas>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Disk Usage</div>
+      <canvas id="disk-graph" height="80" style="width:100%;display:block;"></canvas>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Details</div>
+        <div class="stat-row"><span class="stat-label">Host</span><span class="stat-value" id="sys-host">—</span></div>
+        <div class="stat-row"><span class="stat-label">OS</span><span class="stat-value" id="sys-os">—</span></div>
+        <div class="stat-row"><span class="stat-label">Uptime</span><span class="stat-value" id="sys-uptime">—</span></div>
+        <div class="stat-row"><span class="stat-label">CPU</span><span class="stat-value" id="sys-cpu">—</span></div>
+        <div class="stat-row"><span class="stat-label">Memory</span><span class="stat-value" id="sys-mem">—</span></div>
+        <div class="stat-row"><span class="stat-label">Disk</span><span class="stat-value" id="sys-disk">—</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Health</div>
+        <div class="stat-row"><span class="stat-label">CPU</span><span class="stat-value" id="health-cpu">—</span></div>
+        <div class="stat-row"><span class="stat-label">Memory</span><span class="stat-value" id="health-mem">—</span></div>
+        <div class="stat-row"><span class="stat-label">Disk</span><span class="stat-value" id="health-disk">—</span></div>
+      </div>
     </div>
   </div>
 
@@ -549,7 +629,70 @@ async function refresh() {
   } catch(e) { console.error(e); }
 }
 
+function drawGraph(canvasId, data, color) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  canvas.width = canvas.offsetWidth;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  if (data.length < 2) return;
+
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+
+  data.forEach((val, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - (val / 100) * h;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  ctx.lineTo(w, h);
+  ctx.lineTo(0, h);
+  ctx.closePath();
+  ctx.fillStyle = color + '22';
+  ctx.fill();
+}
+
+function healthText(pct) {
+  if (pct >= 90) return '<span style="color:var(--bad)">Critical (' + pct.toFixed(1) + '%)</span>';
+  if (pct >= 70) return '<span style="color:var(--warn)">Warning (' + pct.toFixed(1) + '%)</span>';
+  return '<span style="color:var(--good)">Healthy (' + pct.toFixed(1) + '%)</span>';
+}
+
+async function refreshSystem() {
+  try {
+    const [snap, hist] = await Promise.all([
+      fetch('/api/snapshot').then(r => r.json()),
+      fetch('/api/history').then(r => r.json()),
+    ]);
+
+    document.getElementById('sys-host').textContent = snap.Hostname;
+    document.getElementById('sys-os').textContent = snap.OS;
+    document.getElementById('sys-uptime').textContent = Math.floor(snap.Uptime / 3600) + ' hours';
+    document.getElementById('sys-cpu').textContent = snap.CPUPercent.toFixed(1) + '%';
+    document.getElementById('sys-mem').textContent = snap.MemPercent.toFixed(1) + '% (' + Math.floor(snap.MemUsed/1024/1024) + ' MB / ' + Math.floor(snap.MemTotal/1024/1024) + ' MB)';
+    document.getElementById('sys-disk').textContent = snap.DiskPercent.toFixed(1) + '% (' + Math.floor(snap.DiskUsed/1024/1024/1024) + ' GB / ' + Math.floor(snap.DiskTotal/1024/1024/1024) + ' GB)';
+
+    document.getElementById('health-cpu').innerHTML = healthText(snap.CPUPercent);
+    document.getElementById('health-mem').innerHTML = healthText(snap.MemPercent);
+    document.getElementById('health-disk').innerHTML = healthText(snap.DiskPercent);
+
+    if (hist && hist.length > 1) {
+      drawGraph('cpu-graph', hist.map(h => h.cpu), '#4DA8FF');
+      drawGraph('mem-graph', hist.map(h => h.mem), '#39D98A');
+      drawGraph('disk-graph', hist.map(h => h.disk), '#F5A623');
+    }
+  } catch(e) { console.error(e); }
+}
+
+setInterval(refreshSystem, 2000);
+
 refresh();
+refreshSystem();
 setInterval(refresh, 2000);
 </script>
 </body>
