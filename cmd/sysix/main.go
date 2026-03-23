@@ -68,8 +68,24 @@ func main() {
 		}
 
 	case "watch":
-		if err := tui.Start(); err != nil {
-			fmt.Println("error starting TUI:", err)
+		showProcs := false
+		showPorts := false
+		for _, arg := range args[1:] {
+			if arg == "--procs" {
+				showProcs = true
+			}
+			if arg == "--ports" {
+				showPorts = true
+			}
+		}
+		if showProcs || showPorts {
+			if err := tui.StartFocused(showProcs, showPorts); err != nil {
+				fmt.Println("error starting focused TUI:", err)
+			}
+		} else {
+			if err := tui.Start(); err != nil {
+				fmt.Println("error starting TUI:", err)
+			}
 		}
 	case "serve":
 		cfg, _ := config.Load()
@@ -94,8 +110,9 @@ welcome to sysix observer 0.3
 
 Usage:
   sysix status            snapshot of your system right now
-  sysix status --procs    include running processes
-  sysix status --ports    include open ports
+  sysix status --procs    launch focused process viewer
+  sysix status --ports    launch focused port viewer
+  sysix status --procs --ports  launch side-by-side viewer
   sysix watch             launch the live TUI
   sysix serve             launch the web UI
   sysix help              show this help message
