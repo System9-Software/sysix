@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/System9-Software/sysix/internal/analyzer"
 	"github.com/System9-Software/sysix/internal/collector"
 )
 
@@ -49,6 +50,7 @@ func Start(port int) error {
 	http.HandleFunc("/api/ports", handlePorts)
 	http.HandleFunc("/api/network", handleNetwork)
 	http.HandleFunc("/api/history", handleHistory)
+	http.HandleFunc("/api/analysis", handleAnalysis)
 
 	addr := fmt.Sprintf(":%d", port)
 	fmt.Printf("sysix web UI running at http://localhost%s\n", addr)
@@ -65,6 +67,23 @@ func handleHistory(w http.ResponseWriter, r *http.Request) {
 	defer histMu.Unlock()
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(history)
+}
+
+func handleAnalysis(w http.ResponseWriter, r *http.Request) {
+	histMu.Lock()
+	hist := make([]analyzer.HistoryPoint, len(history))
+	for i, h := range history {
+		hist[i] = analyzer.HistoryPoint{
+			CPUPercent:  h.CPUPercent,
+			MemPercent:  h.MemPercent,
+			DiskPercent: h.DiskPercent,
+		}
+	}
+	histMu.Unlock()
+
+	report := analyzer.Analyze(hist)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(report)
 }
 
 func handleSnapshot(w http.ResponseWriter, r *http.Request) {
