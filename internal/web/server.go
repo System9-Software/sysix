@@ -219,7 +219,6 @@ const dashboard = `<!DOCTYPE html>
 
   .nav-badge {
     margin-left: auto;
-    background: var(--bad);
     color: white;
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.65rem;
@@ -273,6 +272,7 @@ const dashboard = `<!DOCTYPE html>
   }
 
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
 
   .card {
     background: var(--card);
@@ -376,19 +376,10 @@ const dashboard = `<!DOCTYPE html>
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: rgba(77,168,255,0.04); }
 
-  /* OVERVIEW ALERTS + SUGGESTIONS */
-  .overview-row {
-    display: flex;
-    gap: 16px;
-  }
-
+  /* OVERVIEW */
+  .overview-row { display: flex; gap: 16px; }
   .overview-row .card { flex: 1; }
-
-  .alert-list, .suggestion-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
+  .alert-list, .suggestion-list { display: flex; flex-direction: column; gap: 8px; }
 
   .compact-item {
     display: flex;
@@ -467,7 +458,7 @@ const dashboard = `<!DOCTYPE html>
     padding: 8px 0;
   }
 
-  /* MAINTENANCE full alerts */
+  /* ALERTS */
   .alert {
     background: var(--card);
     border-radius: var(--radius);
@@ -485,33 +476,17 @@ const dashboard = `<!DOCTYPE html>
 
   .alert-header { display: flex; align-items: center; gap: 10px; }
 
-  .alert-icon {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    font-weight: 700;
-  }
-
+  .alert-icon { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 700; }
   .alert.critical .alert-icon { color: var(--bad); }
   .alert.warning .alert-icon { color: var(--warn); }
   .alert.info .alert-icon { color: var(--accent); }
 
-  .alert-title {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-  }
-
+  .alert-title { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.05em; }
   .alert.critical .alert-title { color: var(--bad); }
   .alert.warning .alert-title { color: var(--warn); }
   .alert.info .alert-title { color: var(--accent); }
 
-  .alert-desc {
-    font-size: 0.82rem;
-    color: var(--muted);
-    font-family: 'DM Sans', sans-serif;
-    line-height: 1.5;
-  }
+  .alert-desc { font-size: 0.82rem; color: var(--muted); font-family: 'DM Sans', sans-serif; line-height: 1.5; }
 
   .alert-action {
     margin-top: 4px;
@@ -531,11 +506,7 @@ const dashboard = `<!DOCTYPE html>
   .alert.info .alert-action { color: var(--accent); }
   .alert-action:hover { opacity: 0.7; }
 
-  .maint-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
+  .maint-toolbar { display: flex; justify-content: space-between; align-items: center; }
 
   .maint-refresh {
     font-family: 'JetBrains Mono', monospace;
@@ -558,6 +529,79 @@ const dashboard = `<!DOCTYPE html>
     letter-spacing: 0.1em;
     text-transform: uppercase;
     margin: 16px 0 8px;
+  }
+
+  /* ANALYSIS */
+  .trend-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    gap: 8px;
+  }
+
+  .trend-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .trend-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.4rem;
+    font-weight: 700;
+  }
+
+  .trend-up { color: var(--bad); }
+  .trend-down { color: var(--good); }
+  .trend-stable { color: var(--accent); }
+
+  .trend-desc {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .finding {
+    background: var(--bg);
+    border-radius: var(--radius);
+    border-left: 3px solid var(--muted);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .finding.critical { border-left-color: var(--bad); }
+  .finding.warning { border-left-color: var(--warn); }
+  .finding.info { border-left-color: var(--accent); }
+
+  .finding-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .finding.critical .finding-title { color: var(--bad); }
+  .finding.warning .finding-title { color: var(--warn); }
+  .finding.info .finding-title { color: var(--accent); }
+
+  .finding-detail {
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    line-height: 1.4;
+  }
+
+  .waiting-state {
+    font-size: 0.82rem;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    padding: 12px 0;
+    text-align: center;
   }
 
   .settings-group { margin-bottom: 24px; }
@@ -606,6 +650,10 @@ const dashboard = `<!DOCTYPE html>
     </button>
     <button class="nav-item" onclick="showPage('system', this)">
       <span class="nav-icon">[#]</span> System
+    </button>
+    <button class="nav-item" onclick="showPage('analysis', this)">
+      <span class="nav-icon">[^]</span> Analysis
+      <span class="nav-badge" id="analysis-badge">0</span>
     </button>
     <button class="nav-item" id="nav-maintenance" onclick="showPage('maintenance', this)">
       <span class="nav-icon">[!]</span> Maintenance
@@ -737,6 +785,37 @@ const dashboard = `<!DOCTYPE html>
     </div>
   </div>
 
+  <!-- ANALYSIS -->
+  <div class="page" id="page-analysis">
+    <div class="maint-toolbar">
+      <div class="page-header">Analysis</div>
+      <button class="maint-refresh" onclick="refreshAnalysis()">[ refresh ]</button>
+    </div>
+    <div class="grid-3" style="margin-top:4px;">
+      <div class="card trend-card">
+        <div class="trend-label">CPU Trend</div>
+        <div class="trend-value" id="trend-cpu">—</div>
+        <div class="trend-desc" id="trend-cpu-desc">collecting data...</div>
+      </div>
+      <div class="card trend-card">
+        <div class="trend-label">Memory Trend</div>
+        <div class="trend-value" id="trend-mem">—</div>
+        <div class="trend-desc" id="trend-mem-desc">collecting data...</div>
+      </div>
+      <div class="card trend-card">
+        <div class="trend-label">Disk Trend</div>
+        <div class="trend-value" id="trend-disk">—</div>
+        <div class="trend-desc" id="trend-disk-desc">collecting data...</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <div class="card-title">Findings</div>
+      <div id="analysis-findings" style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+        <div class="waiting-state">[~] collecting history — findings appear after ~20 seconds</div>
+      </div>
+    </div>
+  </div>
+
   <!-- MAINTENANCE -->
   <div class="page" id="page-maintenance">
     <div class="maint-toolbar">
@@ -752,6 +831,10 @@ const dashboard = `<!DOCTYPE html>
         </div>
         <div class="alert-desc">Analyzing system...</div>
       </div>
+    </div>
+    <div class="maint-section-title">Analyzer Findings</div>
+    <div id="maint-findings" style="display:flex;flex-direction:column;gap:10px;">
+      <div class="waiting-state">[~] collecting history...</div>
     </div>
   </div>
 
@@ -802,32 +885,11 @@ function navTo(page) {
   if (btn) showPage(page, btn);
 }
 
-// Hardcoded sysix-level suggestions
 const SUGGESTIONS = [
-  {
-    title: 'NEW IN SYSIX',
-    desc: 'sysix has been updated to version 0.3. Changelog coming soon.',
-    action: 'View Changelog',
-    onclick: null
-  },
-  {
-    title: 'TIP: TERMINAL MODE',
-    desc: 'Run "sysix watch" in your terminal for a live TUI dashboard without the browser.',
-    action: null,
-    onclick: null
-  },
-  {
-    title: 'TIP: QUICK SNAPSHOT',
-    desc: 'Run "sysix status --procs --ports" for a fast terminal snapshot including processes and ports.',
-    action: null,
-    onclick: null
-  },
-  {
-    title: 'CONFIG',
-    desc: 'Customize refresh rate and visible panels in config.yaml in your sysix directory.',
-    action: 'View Settings',
-    onclick: 'settings'
-  }
+  { title: 'NEW IN SYSIX', desc: 'sysix has been updated to version 0.3. Changelog coming soon.', action: 'View Changelog', onclick: null },
+  { title: 'TIP: TERMINAL MODE', desc: 'Run "sysix watch" in your terminal for a live TUI dashboard without the browser.', action: null, onclick: null },
+  { title: 'TIP: QUICK SNAPSHOT', desc: 'Run "sysix status --procs --ports" for a fast terminal snapshot including processes and ports.', action: null, onclick: null },
+  { title: 'CONFIG', desc: 'Customize refresh rate and visible panels in config.yaml in your sysix directory.', action: 'View Settings', onclick: 'settings' }
 ];
 
 function compactItem(level, icon, title, desc, action, onclick) {
@@ -836,73 +898,101 @@ function compactItem(level, icon, title, desc, action, onclick) {
     : '';
   return '<div class="compact-item ' + level + '" ' + (onclick && !action ? 'onclick="navTo(\'' + onclick + '\')"' : '') + '>' +
     '<span class="compact-icon">' + icon + '</span>' +
-    '<div class="compact-body">' +
-    '<div class="compact-title">' + title + '</div>' +
-    '<div class="compact-desc">' + desc + '</div>' +
-    actionBtn +
-    '</div>' +
+    '<div class="compact-body"><div class="compact-title">' + title + '</div><div class="compact-desc">' + desc + '</div>' + actionBtn + '</div>' +
     '</div>';
+}
+
+function trendIcon(t) {
+  if (t === 'up') return '↑';
+  if (t === 'down') return '↓';
+  return '→';
+}
+
+function trendClass(t) {
+  if (t === 'up') return 'trend-up';
+  if (t === 'down') return 'trend-down';
+  return 'trend-stable';
+}
+
+function trendDesc(t, label) {
+  if (t === 'up') return label + ' is trending upward';
+  if (t === 'down') return label + ' is trending downward';
+  return label + ' is stable';
+}
+
+function renderFindings(findings, containerId) {
+  const container = document.getElementById(containerId);
+  if (!findings || findings.length === 0) {
+    container.innerHTML = '<div class="finding info"><div class="finding-title">NO FINDINGS</div><div class="finding-detail">No anomalies detected in the current observation window.</div></div>';
+    return;
+  }
+  container.innerHTML = findings.map(f => {
+    const icons = { critical: '[!]', warning: '[~]', info: '[i]' };
+    return '<div class="finding ' + f.Level + '">' +
+      '<div class="finding-title">' + (icons[f.Level] || '[i]') + ' ' + f.Title + '</div>' +
+      '<div class="finding-detail">' + f.Detail + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+async function refreshAnalysis() {
+  try {
+    const report = await fetch('/api/analysis').then(r => r.json());
+
+    // Trend cards
+    ['cpu', 'mem', 'disk'].forEach((key, i) => {
+      const labels = ['CPU', 'Memory', 'Disk'];
+      const trendKeys = ['CPUTrend', 'MemTrend', 'DiskTrend'];
+      const t = report[trendKeys[i]];
+      const el = document.getElementById('trend-' + key);
+      const desc = document.getElementById('trend-' + key + '-desc');
+      el.textContent = trendIcon(t);
+      el.className = 'trend-value ' + trendClass(t);
+      desc.textContent = trendDesc(t, labels[i]);
+    });
+
+    // Findings
+    renderFindings(report.Findings, 'analysis-findings');
+    renderFindings(report.Findings, 'maint-findings');
+
+    // Badge on analysis nav item
+    const badge = document.getElementById('analysis-badge');
+    const serious = (report.Findings || []).filter(f => f.Level === 'critical' || f.Level === 'warning');
+    if (serious.length > 0) {
+      badge.style.display = 'inline-block';
+      badge.style.background = serious.some(f => f.Level === 'critical') ? 'var(--bad)' : 'var(--warn)';
+      badge.textContent = serious.length;
+    } else {
+      badge.style.display = 'none';
+    }
+
+  } catch(e) { console.error(e); }
 }
 
 function analyzeSystem(snap, ports) {
   const alerts = [];
-
-  // CPU
   if (snap.CPUPercent >= 90) {
-    alerts.push({ level: 'critical', icon: '[!]', title: 'HIGH CPU USAGE',
-      short: 'CPU at ' + snap.CPUPercent.toFixed(1) + '% — investigate processes.',
-      desc: 'CPU is at ' + snap.CPUPercent.toFixed(1) + '%. Identify and investigate processes consuming excess cycles. Sustained high CPU load may indicate a runaway process or insufficient capacity.',
-      action: 'View Processes', page: 'processes' });
+    alerts.push({ level: 'critical', icon: '[!]', title: 'HIGH CPU USAGE', short: 'CPU at ' + snap.CPUPercent.toFixed(1) + '% — investigate processes.', desc: 'CPU is at ' + snap.CPUPercent.toFixed(1) + '%. Identify and investigate processes consuming excess cycles.', action: 'View Processes', page: 'processes' });
   } else if (snap.CPUPercent >= 70) {
-    alerts.push({ level: 'warning', icon: '[~]', title: 'ELEVATED CPU USAGE',
-      short: 'CPU at ' + snap.CPUPercent.toFixed(1) + '% — monitor for sustained load.',
-      desc: 'CPU is at ' + snap.CPUPercent.toFixed(1) + '%. Monitor for sustained high load. Consider reviewing running services.',
-      action: 'View Processes', page: 'processes' });
+    alerts.push({ level: 'warning', icon: '[~]', title: 'ELEVATED CPU USAGE', short: 'CPU at ' + snap.CPUPercent.toFixed(1) + '% — monitor for sustained load.', desc: 'CPU is at ' + snap.CPUPercent.toFixed(1) + '%. Monitor for sustained high load.', action: 'View Processes', page: 'processes' });
   }
-
-  // Memory
   if (snap.MemPercent >= 90) {
-    alerts.push({ level: 'critical', icon: '[!]', title: 'CRITICAL MEMORY PRESSURE',
-      short: 'Memory at ' + snap.MemPercent.toFixed(1) + '% — action required.',
-      desc: 'Memory is at ' + snap.MemPercent.toFixed(1) + '% (' + Math.floor(snap.MemUsed/1024/1024) + ' MB / ' + Math.floor(snap.MemTotal/1024/1024) + ' MB). Identify and restart high-consumption processes immediately.',
-      action: 'View Processes', page: 'processes' });
+    alerts.push({ level: 'critical', icon: '[!]', title: 'CRITICAL MEMORY PRESSURE', short: 'Memory at ' + snap.MemPercent.toFixed(1) + '% — action required.', desc: 'Memory is at ' + snap.MemPercent.toFixed(1) + '%. Identify and restart high-consumption processes immediately.', action: 'View Processes', page: 'processes' });
   } else if (snap.MemPercent >= 75) {
-    alerts.push({ level: 'warning', icon: '[~]', title: 'HIGH MEMORY USAGE',
-      short: 'Memory at ' + snap.MemPercent.toFixed(1) + '% — review services.',
-      desc: 'Memory is at ' + snap.MemPercent.toFixed(1) + '%. Review running processes for unnecessary or high-consumption services.',
-      action: 'View Processes', page: 'processes' });
+    alerts.push({ level: 'warning', icon: '[~]', title: 'HIGH MEMORY USAGE', short: 'Memory at ' + snap.MemPercent.toFixed(1) + '% — review services.', desc: 'Memory is at ' + snap.MemPercent.toFixed(1) + '%. Review running processes for unnecessary services.', action: 'View Processes', page: 'processes' });
   }
-
-  // Disk
   if (snap.DiskPercent >= 90) {
-    alerts.push({ level: 'critical', icon: '[!]', title: 'DISK SPACE CRITICAL',
-      short: 'Disk at ' + snap.DiskPercent.toFixed(1) + '% — free space immediately.',
-      desc: 'Disk is at ' + snap.DiskPercent.toFixed(1) + '% (' + Math.floor(snap.DiskUsed/1024/1024/1024) + ' GB / ' + Math.floor(snap.DiskTotal/1024/1024/1024) + ' GB). Free up space immediately to prevent service failures.',
-      action: null, page: null });
+    alerts.push({ level: 'critical', icon: '[!]', title: 'DISK SPACE CRITICAL', short: 'Disk at ' + snap.DiskPercent.toFixed(1) + '% — free space immediately.', desc: 'Disk is at ' + snap.DiskPercent.toFixed(1) + '%. Free up space immediately.', action: null, page: null });
   } else if (snap.DiskPercent >= 75) {
-    alerts.push({ level: 'warning', icon: '[~]', title: 'DISK SPACE WARNING',
-      short: 'Disk at ' + snap.DiskPercent.toFixed(1) + '% — plan for cleanup.',
-      desc: 'Disk is at ' + snap.DiskPercent.toFixed(1) + '%. Plan for cleanup or capacity expansion.',
-      action: null, page: null });
+    alerts.push({ level: 'warning', icon: '[~]', title: 'DISK SPACE WARNING', short: 'Disk at ' + snap.DiskPercent.toFixed(1) + '% — plan for cleanup.', desc: 'Disk is at ' + snap.DiskPercent.toFixed(1) + '%. Plan for cleanup or expansion.', action: null, page: null });
   }
-
-  // Uptime
   const hours = Math.floor(snap.Uptime / 3600);
   if (hours >= 168) {
-    alerts.push({ level: 'warning', icon: '[~]', title: 'EXTENDED UPTIME',
-      short: 'System up ' + hours + ' hours — schedule maintenance window.',
-      desc: 'System has been running for ' + hours + ' hours (' + Math.floor(hours/24) + ' days). Consider scheduling a maintenance window for patching and restart.',
-      action: null, page: null });
+    alerts.push({ level: 'warning', icon: '[~]', title: 'EXTENDED UPTIME', short: 'System up ' + hours + ' hours — schedule maintenance window.', desc: 'System has been running for ' + hours + ' hours. Consider scheduling a maintenance window.', action: null, page: null });
   }
-
-  // Ports
   if (ports && ports.length > 50) {
-    alerts.push({ level: 'warning', icon: '[~]', title: 'HIGH PORT COUNT',
-      short: ports.length + ' ports listening — review for unexpected services.',
-      desc: ports.length + ' ports are currently listening. Review for unexpected or unnecessary exposed services.',
-      action: 'View Ports', page: 'ports' });
+    alerts.push({ level: 'warning', icon: '[~]', title: 'HIGH PORT COUNT', short: ports.length + ' ports listening — review for unexpected services.', desc: ports.length + ' ports are currently listening. Review for unexpected services.', action: 'View Ports', page: 'ports' });
   }
-
   return alerts;
 }
 
@@ -910,8 +1000,6 @@ function renderOverview(alerts) {
   const alertContainer = document.getElementById('overview-alerts');
   const suggContainer = document.getElementById('overview-suggestions');
   const badge = document.getElementById('maint-badge');
-
-  // Badge
   const urgent = alerts.filter(a => a.level === 'critical' || a.level === 'warning');
   if (urgent.length > 0) {
     badge.style.display = 'inline-block';
@@ -920,20 +1008,12 @@ function renderOverview(alerts) {
   } else {
     badge.style.display = 'none';
   }
-
-  // Alerts
   if (alerts.length === 0) {
     alertContainer.innerHTML = compactItem('info', '[i]', 'NO ALERTS', 'No alerts to display. System is healthy.', null, null);
   } else {
-    alertContainer.innerHTML = alerts.map(a =>
-      compactItem(a.level, a.icon, a.title, a.short, a.action, a.page)
-    ).join('');
+    alertContainer.innerHTML = alerts.map(a => compactItem(a.level, a.icon, a.title, a.short, a.action, a.page)).join('');
   }
-
-  // Suggestions — always show all
-  suggContainer.innerHTML = SUGGESTIONS.map(s =>
-    compactItem('suggestion', '[i]', s.title, s.desc, s.action, s.onclick)
-  ).join('');
+  suggContainer.innerHTML = SUGGESTIONS.map(s => compactItem('suggestion', '[i]', s.title, s.desc, s.action, s.onclick)).join('');
 }
 
 function renderMaintenanceAlerts(alerts) {
@@ -943,17 +1023,8 @@ function renderMaintenanceAlerts(alerts) {
     return;
   }
   container.innerHTML = alerts.map(a => {
-    const actionBtn = a.action
-      ? '<button class="alert-action" onclick="navTo(\'' + a.page + '\')">' + a.action + ' →</button>'
-      : '';
-    return '<div class="alert ' + a.level + '">' +
-      '<div class="alert-header">' +
-      '<span class="alert-icon">' + a.icon + '</span>' +
-      '<span class="alert-title">' + a.title + '</span>' +
-      '</div>' +
-      '<div class="alert-desc">' + a.desc + '</div>' +
-      actionBtn +
-      '</div>';
+    const actionBtn = a.action ? '<button class="alert-action" onclick="navTo(\'' + a.page + '\')">' + a.action + ' →</button>' : '';
+    return '<div class="alert ' + a.level + '"><div class="alert-header"><span class="alert-icon">' + a.icon + '</span><span class="alert-title">' + a.title + '</span></div><div class="alert-desc">' + a.desc + '</div>' + actionBtn + '</div>';
   }).join('');
 }
 
@@ -976,18 +1047,15 @@ async function refresh() {
       fetch('/api/network').then(r => r.json()),
       fetch('/api/ports').then(r => r.json()),
     ]);
-
     document.getElementById('host').textContent = snap.Hostname;
     document.getElementById('os').textContent = snap.OS;
     document.getElementById('uptime').textContent = Math.floor(snap.Uptime / 3600) + ' hours';
-
     document.getElementById('cpu-val').textContent = snap.CPUPercent.toFixed(1) + '%';
     setBar('cpu-bar', snap.CPUPercent);
     document.getElementById('mem-val').textContent = snap.MemPercent.toFixed(1) + '% (' + Math.floor(snap.MemUsed/1024/1024) + ' MB / ' + Math.floor(snap.MemTotal/1024/1024) + ' MB)';
     setBar('mem-bar', snap.MemPercent);
     document.getElementById('disk-val').textContent = snap.DiskPercent.toFixed(1) + '% (' + Math.floor(snap.DiskUsed/1024/1024/1024) + ' GB / ' + Math.floor(snap.DiskTotal/1024/1024/1024) + ' GB)';
     setBar('disk-bar', snap.DiskPercent);
-
     document.getElementById('sent').textContent = formatBytes(net.BytesSent);
     document.getElementById('recv').textContent = formatBytes(net.BytesRecv);
     document.getElementById('pkts-out').textContent = net.PacketsSent;
@@ -996,20 +1064,11 @@ async function refresh() {
     document.getElementById('net-recv').textContent = formatBytes(net.BytesRecv);
     document.getElementById('net-pkts-out').textContent = net.PacketsSent;
     document.getElementById('net-pkts-in').textContent = net.PacketsRecv;
-
-    document.getElementById('procs').innerHTML = snap.Processes
-      .filter(p => p.MemMB > 1).slice(0, 20)
-      .map(p => '<tr><td>'+p.PID+'</td><td>'+p.Name+'</td><td>'+p.CPUPercent.toFixed(1)+'%</td><td>'+p.MemMB.toFixed(0)+' MB</td></tr>')
-      .join('');
-
-    document.getElementById('ports').innerHTML = ports.slice(0, 20)
-      .map(p => '<tr><td>'+p.Port+'</td><td>'+p.Type+'</td><td>'+p.Status+'</td><td>'+p.PID+'</td></tr>')
-      .join('');
-
+    document.getElementById('procs').innerHTML = snap.Processes.filter(p => p.MemMB > 1).slice(0, 20).map(p => '<tr><td>'+p.PID+'</td><td>'+p.Name+'</td><td>'+p.CPUPercent.toFixed(1)+'%</td><td>'+p.MemMB.toFixed(0)+' MB</td></tr>').join('');
+    document.getElementById('ports').innerHTML = ports.slice(0, 20).map(p => '<tr><td>'+p.Port+'</td><td>'+p.Type+'</td><td>'+p.Status+'</td><td>'+p.PID+'</td></tr>').join('');
     const alerts = analyzeSystem(snap, ports);
     renderOverview(alerts);
     renderMaintenanceAlerts(alerts);
-
   } catch(e) { console.error(e); }
 }
 
@@ -1067,8 +1126,10 @@ async function refreshSystem() {
 
 refresh();
 refreshSystem();
+refreshAnalysis();
 setInterval(refresh, 2000);
 setInterval(refreshSystem, 2000);
+setInterval(refreshAnalysis, 5000);
 </script>
 </body>
 </html>`
