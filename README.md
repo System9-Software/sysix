@@ -1,6 +1,3 @@
-Here's the updated README for sysix with all the professional elements:
-
-```markdown
 # sysix
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
