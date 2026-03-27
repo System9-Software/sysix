@@ -507,6 +507,18 @@ const dashboard = `<!DOCTYPE html>
     font-family: 'JetBrains Mono', monospace;
   }
 
+  .host-select {
+    margin-top: 10px;
+    width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 6px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+  }
+
   .status-dot {
     display: inline-block;
     width: 6px;
@@ -937,6 +949,7 @@ const dashboard = `<!DOCTYPE html>
   </nav>
   <div class="sidebar-footer">
     <span class="status-dot"></span>live
+    <select id="host-select" class="host-select" title="Select host"></select>
   </div>
 </div>
 
@@ -1128,6 +1141,43 @@ const dashboard = `<!DOCTYPE html>
 </main>
 
 <script>
+let currentHost = 'local';
+
+function apiPath(path) {
+  const q = '?host=' + encodeURIComponent(currentHost);
+  return path + q;
+}
+
+async function loadHosts() {
+  try {
+    const hosts = await fetch('/api/hosts').then(r => r.json());
+    const select = document.getElementById('host-select');
+    if (!select || !hosts || hosts.length === 0) return;
+
+    const previous = currentHost;
+    select.innerHTML = hosts.map(h => {
+      const status = h.Status === 'online' ? '' : ' (' + (h.Status || 'unknown') + ')';
+      return '<option value="' + h.ID + '">' + h.Name + status + '</option>';
+    }).join('');
+
+    if (hosts.some(h => h.ID === previous)) {
+      currentHost = previous;
+    } else {
+      currentHost = hosts[0].ID;
+    }
+    select.value = currentHost;
+    select.onchange = () => {
+      currentHost = select.value || 'local';
+      prevNetworkSample = null;
+      refresh();
+      refreshSystem();
+      refreshAnalysis();
+    };
+  } catch (e) {
+    console.error(e);
+  }
+}
+
 function showPage(name, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -1219,7 +1269,7 @@ function renderFindings(findings, containerId) {
 
 async function refreshAnalysis() {
   try {
-    const report = await fetch('/api/analysis').then(r => r.json());
+    const report = await fetch(apiPath('/api/analysis')).then(r => r.json());
 
     // Trend cards
     ['cpu', 'mem', 'disk'].forEach((key, i) => {
@@ -1313,8 +1363,8 @@ function renderMaintenanceAlerts(alerts) {
 async function runMaintenance() {
   try {
     const [snap, ports] = await Promise.all([
-      fetch('/api/snapshot').then(r => r.json()),
-      fetch('/api/ports').then(r => r.json()),
+      fetch(apiPath('/api/snapshot')).then(r => r.json()),
+      fetch(apiPath('/api/ports')).then(r => r.json()),
     ]);
     const alerts = analyzeSystem(snap, ports);
     renderOverview(alerts);
@@ -1327,9 +1377,9 @@ let prevNetworkSample = null;
 async function refresh() {
   try {
     const [snap, net, ports] = await Promise.all([
-      fetch('/api/snapshot').then(r => r.json()),
-      fetch('/api/network').then(r => r.json()),
-      fetch('/api/ports').then(r => r.json()),
+      fetch(apiPath('/api/snapshot')).then(r => r.json()),
+      fetch(apiPath('/api/network')).then(r => r.json()),
+      fetch(apiPath('/api/ports')).then(r => r.json()),
     ]);
     document.getElementById('host').textContent = snap.Hostname;
     document.getElementById('os').textContent = snap.OS;
@@ -1404,8 +1454,8 @@ function healthText(pct) {
 async function refreshSystem() {
   try {
     const [snap, hist] = await Promise.all([
-      fetch('/api/snapshot').then(r => r.json()),
-      fetch('/api/history').then(r => r.json()),
+      fetch(apiPath('/api/snapshot')).then(r => r.json()),
+      fetch(apiPath('/api/history')).then(r => r.json()),
     ]);
     document.getElementById('sys-host').textContent = snap.Hostname;
     document.getElementById('sys-os').textContent = snap.OS;
@@ -1424,12 +1474,14 @@ async function refreshSystem() {
   } catch(e) { console.error(e); }
 }
 
+loadHosts();
 refresh();
 refreshSystem();
 refreshAnalysis();
 setInterval(refresh, 2000);
 setInterval(refreshSystem, 2000);
 setInterval(refreshAnalysis, 5000);
+setInterval(loadHosts, 10000);
 </script>
 </body>
 </html>`
