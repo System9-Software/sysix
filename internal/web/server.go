@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,9 +20,36 @@ type HistoryPoint struct {
 	DiskPercent float64 `json:"disk"`
 }
 
+type AgentTarget struct {
+	ID   string
+	Name string
+	URL  string
+}
+
+type HostInfo struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Source   string `json:"source"`
+	LastSeen int64  `json:"last_seen"`
+	Status   string `json:"status"`
+	Error    string `json:"error,omitempty"`
+}
+
+type hostData struct {
+	Info     HostInfo
+	Snapshot *collector.SystemSnapshot
+	Network  *collector.NetworkStats
+	Ports    []collector.Port
+	History  []HistoryPoint
+}
+
 var (
-	history []HistoryPoint
-	histMu  sync.Mutex
+	history        []HistoryPoint
+	histMu         sync.Mutex
+	observerMode   bool
+	hostStore      = map[string]*hostData{}
+	hostStoreMu    sync.RWMutex
+	pollHTTPClient = &http.Client{Timeout: 3 * time.Second}
 )
 
 func recordHistory() {
@@ -44,17 +73,36 @@ func recordHistory() {
 }
 
 func Start(port int) error {
+	observerMode = false
 	go recordHistory()
-	http.HandleFunc("/", handleIndex)
-	http.HandleFunc("/api/snapshot", handleSnapshot)
-	http.HandleFunc("/api/ports", handlePorts)
-	http.HandleFunc("/api/network", handleNetwork)
-	http.HandleFunc("/api/history", handleHistory)
-	http.HandleFunc("/api/analysis", handleAnalysis)
-
+	mux := newMux()
 	addr := fmt.Sprintf(":%d", port)
 	fmt.Printf("sysix web UI running at http://localhost%s\n", addr)
-	return http.ListenAndServe(addr, nil)
+	return http.ListenAndServe(addr, mux)
+}
+
+func StartObserver(port int, targets []AgentTarget, pollInterval time.Duration) error {
+	observerMode = true
+	if pollInterval <= 0 {
+		pollInterval = 2 * time.Second
+	}
+	go pollHosts(targets, pollInterval)
+	mux := newMux()
+	addr := fmt.Sprintf(":%d", port)
+	fmt.Printf("sysix observer web UI running at http://localhost%s\n", addr)
+	return http.ListenAndServe(addr, mux)
+}
+
+func newMux() *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", handleIndex)
+	mux.HandleFunc("/api/hosts", handleHosts)
+	mux.HandleFunc("/api/snapshot", handleSnapshot)
+	mux.HandleFunc("/api/ports", handlePorts)
+	mux.HandleFunc("/api/network", handleNetwork)
+	mux.HandleFunc("/api/history", handleHistory)
+	mux.HandleFunc("/api/analysis", handleAnalysis)
+	return mux
 }
 
 func handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -62,14 +110,128 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(dashboard))
 }
 
+func selectedHostID(r *http.Request) string {
+	if !observerMode {
+		return "local"
+	}
+	host := strings.TrimSpace(r.URL.Query().Get("host"))
+	if host == "" {
+		return "local"
+	}
+	return host
+}
+
+func upsertHost(id, name, source string, snapshot *collector.SystemSnapshot, network *collector.NetworkStats, ports []collector.Port, errText string) {
+	hostStoreMu.Lock()
+	defer hostStoreMu.Unlock()
+
+	h, ok := hostStore[id]
+	if !ok {
+		h = &hostData{
+			Info: HostInfo{
+				ID:     id,
+				Name:   name,
+				Source: source,
+			},
+		}
+		hostStore[id] = h
+	}
+	if name != "" {
+		h.Info.Name = name
+	}
+	if source != "" {
+		h.Info.Source = source
+	}
+	if errText != "" {
+		h.Info.Status = "degraded"
+		h.Info.Error = errText
+		return
+	}
+	h.Info.Status = "online"
+	h.Info.Error = ""
+	h.Info.LastSeen = time.Now().Unix()
+	h.Snapshot = snapshot
+	h.Network = network
+	h.Ports = ports
+	if snapshot != nil {
+		h.History = append(h.History, HistoryPoint{
+			Time:        time.Now().Unix(),
+			CPUPercent:  snapshot.CPUPercent,
+			MemPercent:  snapshot.MemPercent,
+			DiskPercent: snapshot.DiskPercent,
+		})
+		if len(h.History) > 60 {
+			h.History = h.History[len(h.History)-60:]
+		}
+	}
+}
+
+func getHost(id string) (*hostData, bool) {
+	hostStoreMu.RLock()
+	defer hostStoreMu.RUnlock()
+	h, ok := hostStore[id]
+	return h, ok
+}
+
+func handleHosts(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if !observerMode {
+		_ = json.NewEncoder(w).Encode([]HostInfo{{
+			ID:     "local",
+			Name:   "local",
+			Source: "local",
+			Status: "online",
+		}})
+		return
+	}
+	hostStoreMu.RLock()
+	hosts := make([]HostInfo, 0, len(hostStore))
+	for _, h := range hostStore {
+		hosts = append(hosts, h.Info)
+	}
+	hostStoreMu.RUnlock()
+	_ = json.NewEncoder(w).Encode(hosts)
+}
+
 func handleHistory(w http.ResponseWriter, r *http.Request) {
+	if observerMode {
+		hostID := selectedHostID(r)
+		h, ok := getHost(hostID)
+		if !ok || len(h.History) == 0 {
+			http.Error(w, "host history not available", http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(h.History)
+		return
+	}
 	histMu.Lock()
 	defer histMu.Unlock()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(history)
+	_ = json.NewEncoder(w).Encode(history)
 }
 
 func handleAnalysis(w http.ResponseWriter, r *http.Request) {
+	if observerMode {
+		hostID := selectedHostID(r)
+		h, ok := getHost(hostID)
+		if !ok || len(h.History) == 0 {
+			http.Error(w, "host history not available", http.StatusServiceUnavailable)
+			return
+		}
+		hist := make([]analyzer.HistoryPoint, len(h.History))
+		for i, hp := range h.History {
+			hist[i] = analyzer.HistoryPoint{
+				CPUPercent:  hp.CPUPercent,
+				MemPercent:  hp.MemPercent,
+				DiskPercent: hp.DiskPercent,
+			}
+		}
+		report := analyzer.Analyze(hist)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(report)
+		return
+	}
 	histMu.Lock()
 	hist := make([]analyzer.HistoryPoint, len(history))
 	for i, h := range history {
@@ -83,37 +245,154 @@ func handleAnalysis(w http.ResponseWriter, r *http.Request) {
 
 	report := analyzer.Analyze(hist)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(report)
+	_ = json.NewEncoder(w).Encode(report)
 }
 
 func handleSnapshot(w http.ResponseWriter, r *http.Request) {
+	if observerMode {
+		hostID := selectedHostID(r)
+		h, ok := getHost(hostID)
+		if !ok || h.Snapshot == nil {
+			http.Error(w, "host snapshot not available", http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(h.Snapshot)
+		return
+	}
 	snapshot, err := collector.GetSnapshot()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(snapshot)
+	_ = json.NewEncoder(w).Encode(snapshot)
 }
 
 func handlePorts(w http.ResponseWriter, r *http.Request) {
+	if observerMode {
+		hostID := selectedHostID(r)
+		h, ok := getHost(hostID)
+		if !ok {
+			http.Error(w, "host ports not available", http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(h.Ports)
+		return
+	}
 	ports, err := collector.GetPorts()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(ports)
+	_ = json.NewEncoder(w).Encode(ports)
 }
 
 func handleNetwork(w http.ResponseWriter, r *http.Request) {
+	if observerMode {
+		hostID := selectedHostID(r)
+		h, ok := getHost(hostID)
+		if !ok || h.Network == nil {
+			http.Error(w, "host network not available", http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(h.Network)
+		return
+	}
 	network, err := collector.GetNetwork()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(network)
+	_ = json.NewEncoder(w).Encode(network)
+}
+
+func pollHosts(targets []AgentTarget, interval time.Duration) {
+	for {
+		pollLocalHost()
+		for _, t := range targets {
+			pollRemoteHost(t)
+		}
+		time.Sleep(interval)
+	}
+}
+
+func pollLocalHost() {
+	snapshot, sErr := collector.GetSnapshot()
+	network, nErr := collector.GetNetwork()
+	ports, pErr := collector.GetPorts()
+
+	if sErr != nil {
+		upsertHost("local", "local", "local", nil, nil, nil, sErr.Error())
+		return
+	}
+	if nErr != nil {
+		upsertHost("local", snapshot.Hostname, "local", snapshot, nil, nil, nErr.Error())
+		return
+	}
+	if pErr != nil {
+		upsertHost("local", snapshot.Hostname, "local", snapshot, network, nil, pErr.Error())
+		return
+	}
+	upsertHost("local", snapshot.Hostname, "local", snapshot, network, ports, "")
+}
+
+func normalizeBaseURL(raw string) string {
+	u := strings.TrimSpace(raw)
+	u = strings.TrimRight(u, "/")
+	if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
+		u = "http://" + u
+	}
+	return u
+}
+
+func fetchJSON(baseURL, path string, target any) error {
+	baseURL = normalizeBaseURL(baseURL)
+	u, err := url.JoinPath(baseURL, path)
+	if err != nil {
+		return err
+	}
+	resp, err := pollHTTPClient.Get(u)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("status %d from %s", resp.StatusCode, u)
+	}
+	return json.NewDecoder(resp.Body).Decode(target)
+}
+
+func pollRemoteHost(target AgentTarget) {
+	id := strings.TrimSpace(target.ID)
+	if id == "" {
+		return
+	}
+	name := target.Name
+	if strings.TrimSpace(name) == "" {
+		name = id
+	}
+
+	var snapshot collector.SystemSnapshot
+	if err := fetchJSON(target.URL, "/api/snapshot", &snapshot); err != nil {
+		upsertHost(id, name, target.URL, nil, nil, nil, err.Error())
+		return
+	}
+	var network collector.NetworkStats
+	if err := fetchJSON(target.URL, "/api/network", &network); err != nil {
+		upsertHost(id, name, target.URL, &snapshot, nil, nil, err.Error())
+		return
+	}
+	var ports []collector.Port
+	if err := fetchJSON(target.URL, "/api/ports", &ports); err != nil {
+		upsertHost(id, name, target.URL, &snapshot, &network, nil, err.Error())
+		return
+	}
+	upsertHost(id, name, target.URL, &snapshot, &network, ports, "")
 }
 
 const dashboard = `<!DOCTYPE html>

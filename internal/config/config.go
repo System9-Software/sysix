@@ -19,10 +19,31 @@ type WebConfig struct {
 	Enabled bool   `yaml:"enabled"`
 }
 
+type AgentConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Host    string `yaml:"host"`
+	Port    int    `yaml:"port"`
+}
+
+type ObserverAgent struct {
+	ID      string `yaml:"id"`
+	Name    string `yaml:"name"`
+	URL     string `yaml:"url"`
+	Enabled bool   `yaml:"enabled"`
+}
+
+type ObserverConfig struct {
+	Enabled      bool            `yaml:"enabled"`
+	PollInterval int             `yaml:"poll_interval"`
+	Agents       []ObserverAgent `yaml:"agents"`
+}
+
 type Config struct {
-	RefreshRate int         `yaml:"refresh_rate"`
-	Panels      PanelConfig `yaml:"panels"`
-	Web         WebConfig   `yaml:"web"`
+	RefreshRate int            `yaml:"refresh_rate"`
+	Panels      PanelConfig    `yaml:"panels"`
+	Web         WebConfig      `yaml:"web"`
+	Agent       AgentConfig    `yaml:"agent"`
+	Observer    ObserverConfig `yaml:"observer"`
 }
 
 func Default() *Config {
@@ -38,6 +59,16 @@ func Default() *Config {
 			Port:    8080,
 			Host:    "localhost",
 			Enabled: true,
+		},
+		Agent: AgentConfig{
+			Enabled: true,
+			Host:    "0.0.0.0",
+			Port:    9090,
+		},
+		Observer: ObserverConfig{
+			Enabled:      false,
+			PollInterval: 2,
+			Agents:       []ObserverAgent{},
 		},
 	}
 }

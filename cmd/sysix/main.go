@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/System9-Software/sysix/internal/agent"
 	"github.com/System9-Software/sysix/internal/collector"
 	"github.com/System9-Software/sysix/internal/config"
 	"github.com/System9-Software/sysix/internal/tui"
@@ -96,6 +98,47 @@ func main() {
 		if err := web.Start(cfg.Web.Port); err != nil {
 			fmt.Println("error starting web server:", err)
 		}
+	case "agent":
+		cfg, _ := config.Load()
+		if !cfg.Agent.Enabled {
+			fmt.Println("agent is disabled in config.yaml")
+			return
+		}
+		if err := agent.Start(cfg.Agent.Host, cfg.Agent.Port); err != nil {
+			fmt.Println("error starting agent server:", err)
+		}
+	case "observer":
+		cfg, _ := config.Load()
+		if !cfg.Web.Enabled {
+			fmt.Println("web UI is disabled in config.yaml")
+			return
+		}
+		targets := make([]web.AgentTarget, 0, len(cfg.Observer.Agents))
+		for i, a := range cfg.Observer.Agents {
+			if !a.Enabled || a.URL == "" {
+				continue
+			}
+			id := a.ID
+			if id == "" {
+				id = fmt.Sprintf("agent-%d", i+1)
+			}
+			name := a.Name
+			if name == "" {
+				name = id
+			}
+			targets = append(targets, web.AgentTarget{
+				ID:   id,
+				Name: name,
+				URL:  a.URL,
+			})
+		}
+		poll := time.Duration(cfg.Observer.PollInterval) * time.Second
+		if poll <= 0 {
+			poll = 2 * time.Second
+		}
+		if err := web.StartObserver(cfg.Web.Port, targets, poll); err != nil {
+			fmt.Println("error starting observer web server:", err)
+		}
 	case "help":
 		printHelp()
 	default:
@@ -114,6 +157,8 @@ Usage:
   sysix status --ports    launch focused port viewer
   sysix status --procs --ports  launch side-by-side viewer
   sysix watch             launch the live TUI
+  sysix agent             run sysix agent API server
+  sysix observer          run sysix observer (web + multi-host polling)
   sysix serve             launch the web UI
   sysix help              show this help message
 	`)
